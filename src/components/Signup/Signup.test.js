@@ -249,6 +249,8 @@ describe('Signup', () => {
     });
 
     // Assert
+    const inputHidden = container.querySelector('input[type="hidden"]#zc_gad');
+    expect(inputHidden).toBeDefined();
     await waitFor(() => expect(getByText('signup.thanks_for_registering')).toBeInTheDocument());
   });
 });

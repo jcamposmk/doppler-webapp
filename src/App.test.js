@@ -640,6 +640,54 @@ describe('App component', () => {
     });
   });
 
+  describe('zoho', () => {
+    it('Login view should not have zoho script', async () => {
+      // Arrange
+      const dependencies = defaultDependencies;
+
+      // Act
+      render(
+        <AppServicesProvider forcedServices={dependencies}>
+          <Router initialEntries={['/login']}>
+            <App locale="en" />
+          </Router>
+        </AppServicesProvider>,
+      );
+
+      // Assert
+      const zohoScript = document.querySelector(`script[src="${scriptUrl}"]`);
+      expect(zohoScript).toBeNull();
+    });
+
+    it('Signup view should have zoho script', async () => {
+      // Arrange
+      const dependencies = {
+        sessionManager: createDoubleSessionManager(),
+        localStorage: createLocalStorageDouble(),
+        dopplerSitesClient: dopplerSitesClientDouble,
+      };
+
+      createJsonParse();
+
+      const oldValue = 'old value';
+      dependencies.localStorage.setItem('dopplerFirstOrigin.value', oldValue);
+
+      // Act
+      render(
+        <AppServicesProvider forcedServices={dependencies}>
+          <Router initialEntries={['/signup']}>
+            <App locale="en" />
+          </Router>
+        </AppServicesProvider>,
+      );
+
+      // Assert
+      await waitFor(() => null);
+      const zohoScript = document.querySelector(`script[src="${scriptUrl}"]`);
+      expect(zohoScript).not.toBeNull();
+    });
+  });
+
   describe('origin parameter', () => {
     // TODO: fix this tests console warning
     it('should be stored in the local storage', async () => {
