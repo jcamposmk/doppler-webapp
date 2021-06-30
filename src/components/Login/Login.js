@@ -2,22 +2,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Link, Redirect } from 'react-router-dom';
 import { useIntl, FormattedMessage } from 'react-intl';
 import { Helmet } from 'react-helmet';
-import {
-  EmailFieldItem,
-  FieldGroup,
-  PasswordFieldItem,
-  SubmitButton,
-  FormWithCaptcha,
-  FormMessages,
-  CaptchaLegalMessage,
-} from '../form-helpers/form-helpers';
-import LanguageSelector from '../shared/LanguageSelector/LanguageSelector';
 import SafeRedirect from '../SafeRedirect';
 import { InjectAppServices } from '../../services/pure-di';
 import { LoginErrorAccountNotValidated } from './LoginErrorAccountNotValidated';
 import { FormattedMessageMarkdown } from '../../i18n/FormattedMessageMarkdown';
 import { connect } from 'formik';
-import Promotions from '../shared/Promotions/Promotions';
 import queryString from 'query-string';
 import {
   addLogEntry,
@@ -25,6 +14,7 @@ import {
   isZohoChatOnline,
   openZohoChatWithMessage,
 } from '../../utils';
+import { Field, Form, FieldArray, Formik } from 'formik';
 
 const fieldNames = {
   user: 'user',
@@ -113,6 +103,8 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
   const [redirectAfterLogin, setRedirectAfterLogin] = useState(false);
   const [redirectToUrl, setRedirectToUrl] = useState(false);
   const _ = (id, values) => intl.formatMessage({ id: id }, values);
+  const [ initialValues, setInitialValues] = useState([]);
+  const [ isLoading, setIsLoading] = useState(false);
 
   /** Prepare empty values for all fields
    * It is required because in another way, the fields are not marked as touched.
@@ -136,6 +128,16 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
       window.gtag('event', 'conversion', { send_to: 'AW-1065197040/ZA62CKv_gZEBEPC79vsD' });
     }
   }, [location, window]);
+
+  useEffect(() => {
+    const fetchInfo = () => ["Juan", "Carlos"];
+    setIsLoading(true);
+    setTimeout(() => {
+      const data = fetchInfo();
+      setInitialValues([...data, ""]);
+      setIsLoading(false);
+    }, 2000);
+  }, []);
 
   const errorMessages = {
     blockedAccountNotPayed: {
@@ -162,101 +164,6 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
     },
   };
 
-  const onSubmit = async (values, { setSubmitting, setErrors }) => {
-    try {
-      const result = await dopplerLegacyClient.login({
-        username: values[fieldNames.user].trim(),
-        password: values[fieldNames.password],
-        captchaResponseToken: values['captchaResponseToken'],
-      });
-
-      if (result.success) {
-        sessionManager.restart();
-        if (result.redirectUrl) {
-          setRedirectToUrl('/' + result.redirectUrl);
-        } else {
-          setRedirectAfterLogin(true);
-        }
-      } else if (result.expectedError && result.expectedError.blockedAccountNotPayed) {
-        setErrors({
-          _error: (
-            <LoginErrorBasedOnCustomerSupport messages={errorMessages.blockedAccountNotPayed} />
-          ),
-        });
-      } else if (result.expectedError && result.expectedError.cancelatedAccountNotPayed) {
-        setErrors({
-          _error: (
-            <LoginErrorBasedOnCustomerSupport messages={errorMessages.cancelatedAccountNotPayed} />
-          ),
-        });
-      } else if (result.expectedError && result.expectedError.userInactive) {
-        // TODO: define how this error should be shown
-        console.log('userInactive error', result);
-        setErrors({
-          _error: <FormattedMessageMarkdown id="validation_messages.error_unexpected_MD" />,
-        });
-      } else if (result.expectedError && result.expectedError.accountNotValidated) {
-        setErrors({
-          _warning: <LoginErrorAccountNotValidated email={values[fieldNames.user]} />,
-        });
-      } else if (result.expectedError && result.expectedError.cancelatedAccount) {
-        setErrors({
-          _error: <LoginErrorBasedOnCustomerSupport messages={errorMessages.cancelatedAccount} />,
-        });
-      } else if (result.expectedError && result.expectedError.blockedAccountCMDisabled) {
-        setErrors({
-          _error: (
-            <p>
-              <FormattedMessage
-                id={'validation_messages.error_account_is_blocked_disabled_by_cm'}
-              />
-              <strong>{result.expectedError.errorMessage}</strong>
-            </p>
-          ),
-        });
-      } else if (
-        result.expectedError &&
-        (result.expectedError.blockedAccountInvalidPassword ||
-          result.expectedError.maxLoginAttempts)
-      ) {
-        setErrors({
-          _error: (
-            <LoginErrorBasedOnCustomerSupport
-              messages={errorMessages.blockedAccountInvalidPassword}
-            />
-          ),
-        });
-      } else if (result.expectedError && result.expectedError.invalidLogin) {
-        setErrors({ _error: 'validation_messages.error_invalid_login' });
-      } else if (result.expectedError && result.expectedError.wrongCaptcha) {
-        setErrors({ _error: 'validation_messages.error_invalid_captcha' });
-        addLogEntry({
-          account: values[fieldNames.user],
-          origin: window.location.origin,
-          section: 'Login',
-          browser: window.navigator.userAgent,
-          message: 'WrongCaptcha',
-          error: result,
-        });
-        console.log('invalid captcha', result);
-      } else {
-        console.log('Unexpected error', result);
-        setErrors({
-          _error: <FormattedMessageMarkdown id="validation_messages.error_unexpected_MD" />,
-        });
-        addLogEntry({
-          account: values[fieldNames.user],
-          origin: window.location.origin,
-          section: 'Login Submit',
-          browser: window.navigator.userAgent,
-          error: result,
-        });
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (redirectToUrl) {
     return <SafeRedirect to={redirectToUrl} />;
   }
@@ -270,86 +177,75 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
     );
   }
 
-  const LinkToForgotPassword = connect(
-    ({
-      formik: {
-        values: { user },
-      },
-    }) => {
-      return (
-        <Link
-          to={{
-            pathname: '/login/reset-password',
-            state: { email: user },
-            search: location.search,
-          }}
-          className="forgot-link"
-        >
-          {_('login.forgot_password')}
-        </Link>
-      );
-    },
-  );
-
   return (
     <div className="dp-app-container">
-      <main className="panel-wrapper">
+      <main 
+        className="panel-wrapper p-l-54 p-t-54">
         <Helmet>
           <title>{_('login.head_title')}</title>
           <meta name="description" content={_('login.head_description')} />
         </Helmet>
-        <article className="main-panel">
-          <header>
-            <h1 className="logo-doppler-new">
-              <a target="_blank" href={_('login.url_site')} rel="noopener noreferrer">
-                Doppler
-              </a>
-            </h1>
-            <LanguageSelector urlParameters={location.search} />
-          </header>
-          <h5>{_('login.enter_doppler')}</h5>
-          <p className="content-subtitle">{_('login.enter_doppler_sub')}</p>
-          <p className="content-subtitle">
-            {_('login.you_want_create_account')}{' '}
-            <Link to={{ pathname: '/signup', search: location.search }}>{_('login.signup')}</Link>
-          </p>
-          <FormWithCaptcha
-            className="login-form"
-            initialValues={getFormInitialValues()}
-            initialFormMessage={formMessage}
-            onSubmit={onSubmit}
-          >
-            <fieldset>
-              <FieldGroup>
-                <EmailFieldItem
-                  autoFocus
-                  fieldName={fieldNames.user}
-                  label={_('login.label_user')}
-                  required
-                  placeholder={_('login.placeholder_email')}
-                />
-                <PasswordFieldItem
-                  fieldName={fieldNames.password}
-                  label={_('signup.label_password')}
-                  placeholder={_('signup.placeholder_password')}
-                  required
-                />
-              </FieldGroup>
-            </fieldset>
-            <fieldset>
-              <FormMessages />
-              <SubmitButton className="button--round">{_('login.button_login')}</SubmitButton>
-              <LinkToForgotPassword />
-            </fieldset>
-          </FormWithCaptcha>
-          <footer>
-            <CaptchaLegalMessage />
-            <small>
-              <FormattedMessageMarkdown id="login.copyright_MD" linkTarget={'_blank'} />
-            </small>
-          </footer>
-        </article>
-        <Promotions type="login" page={extractPage(location)} />
+        
+        <Formik
+        enableReinitialize={true}
+          initialValues={{ friends: initialValues }}
+          onSubmit={values =>
+            setTimeout(() => {
+              alert(JSON.stringify(values.friends.filter(f => f), null, 2));
+
+            }, 500)
+          }
+          render={({ values }) => (
+            <Form>
+              <FieldArray
+                name="friends"
+                render={arrayHelpers => (
+                  <div>
+                    {/* email input field and add button */}
+                    <div className="dp-rowflex p-b-32">
+                      <div class="col-md-8">
+                        <Field 
+                          name={`friends.${Math.max(0, values.friends.length-1)}`} />
+                      </div>
+                        <button 
+                            type="button" 
+                            onClick={() => arrayHelpers.push('')}
+                            className="dp-button button-medium secondary-green">
+                            Agregar
+                          </button>
+                    </div>
+                    {
+                      isLoading ? (
+                        <span>Cargando ...</span>
+                      ) : (
+                          values.friends?.length > 1 && (
+                            values.friends.slice(0, values.friends.length-1).map((friend, index) => (
+                              <div key={index} className="p-b-6 p-t-6">
+                                <span className="p-r-36">{friend}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => arrayHelpers.remove(index)} // remove a friend from the list
+                                >
+                                  Quitar
+                                </button>
+                              </div>
+                            ))
+                        )
+                      )
+                    }
+                    <div className="p-t-54 p-l-54 m-l-54">
+                      <button 
+                        type="submit"
+                        className="dp-button button-medium primary-green">
+                        Guardar
+                    </button>
+                    </div>
+                  </div>
+                )}
+              />
+            </Form>
+          )}
+        />
       </main>
     </div>
   );
