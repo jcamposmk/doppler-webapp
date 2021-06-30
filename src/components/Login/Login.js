@@ -15,6 +15,12 @@ import {
   openZohoChatWithMessage,
 } from '../../utils';
 import { Field, Form, FieldArray, Formik } from 'formik';
+import {
+  EmailFieldItem,
+  FieldGroup,
+  SubmitButton,
+  FormMessages,
+} from '../form-helpers/form-helpers';
 
 const fieldNames = {
   user: 'user',
@@ -114,7 +120,7 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
   }, [location, window]);
 
   useEffect(() => {
-    const fetchInfo = () => ["Juan", "Carlos"];
+    const fetchInfo = () => ["juan@gmail.com", "carlos@gmail.com"];
     setIsLoading(true);
     setTimeout(() => {
       const data = fetchInfo();
@@ -161,11 +167,38 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
     );
   }
 
-  const handleKeyDown = (event, arrayHelpers) => {
+  const handleKeyDown = (event, callback) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      arrayHelpers.push('')
+      callback();
     }
+  }
+
+  const validateEmail = (value) => {
+    let error;
+    if (!value) {
+      error = 'Required';
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(value)) {
+      error = 'Invalid email address';
+    }
+    return error;
+  }
+
+  const addEmail = async (validateField, fieldName, callback) => {
+    const errors = await validateField(fieldName);
+    if(!errors && callback) {
+      callback();
+    }
+  }
+
+  const validateForm = ({emails}) => {
+    const errors = {};
+    const emailsAdded = emails.filter(f => f);
+    if (!emailsAdded || emailsAdded.length === 0) {
+      errors.emails = 'Required';
+    }
+  
+    return errors;
   }
 
   return (
@@ -176,64 +209,73 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
           <title>{_('login.head_title')}</title>
           <meta name="description" content={_('login.head_description')} />
         </Helmet>
-        
         <Formik
+          validate={validateForm}
           enableReinitialize={true}
-          initialValues={{ friends: initialValues }}
+          validateOnChange={false}
+          validateOnBlur={false}
+          initialValues={{ emails: initialValues }}
           onSubmit={values =>
             setTimeout(() => {
-              alert(JSON.stringify(values.friends.filter(f => f), null, 2));
+              alert(JSON.stringify(values.emails.filter(f => f), null, 2));
 
             }, 500)
           }
-          render={({ values }) => (
+          render={({ values, errors, touched, validateField }) => (
             <Form>
               <FieldArray
-                name="friends"
-                render={arrayHelpers => (
-                  <div>
-                    {/* email input field and add button */}
-                    <div className="dp-rowflex p-b-32">
-                      <div class="col-md-8">
-                        <Field 
-                          name={`friends.${Math.max(0, values.friends.length-1)}`}
-                          onKeyDown={e => handleKeyDown(e, arrayHelpers)} />
+                name="emails"
+                render={arrayHelpers => {
+                  const fieldName = `emails.${Math.max(0, values.emails.length-1)}`;
+                  const _addEmail = () => addEmail(validateField, fieldName, () => arrayHelpers.push(''));
+                  const isEmailEmpty = !values.emails[Math.max(0, values.emails.length-1)];
+
+                  return (
+                    <div>
+                      <div className="dp-rowflex p-b-32">
+                        <div class="col-md-7">
+                          <Field 
+                            name={fieldName}
+                            onKeyDown={!isEmailEmpty ? e => handleKeyDown(e, _addEmail) : null}
+                            validate={!isEmailEmpty ? validateEmail : null} />
+                        </div>
+                          <button 
+                              disabled={isEmailEmpty}
+                              type="button" 
+                              onClick={_addEmail}
+                              className="dp-button button-medium secondary-green">
+                              Agregar
+                            </button>
                       </div>
-                        <button 
-                            type="button" 
-                            onClick={() => arrayHelpers.push('')}
-                            className="dp-button button-medium secondary-green">
-                            Agregar
-                          </button>
-                    </div>
-                    {
-                      isLoading ? (
-                        <span>Cargando ...</span>
-                      ) : (
-                          values.friends?.length > 1 && (
-                            values.friends.slice(0, values.friends.length-1).map((friend, index) => (
-                              <div key={index} className="p-b-6 p-t-6">
-                                <span className="p-r-36">{friend}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => arrayHelpers.remove(index)} // remove a friend from the list
-                                >
-                                  Quitar
-                                </button>
-                              </div>
-                            ))
+                      { errors.emails && <div className="dp-error">{errors.emails}</div> } 
+                      {
+                        isLoading ? (
+                          <span>Cargando ...</span>
+                        ) : (
+                            values.emails?.length > 1 && (
+                              values.emails.slice(0, values.emails.length-1).map((friend, index) => (
+                                <div key={index} className="p-b-6 p-t-6">
+                                  <span className="p-r-36">{friend}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => arrayHelpers.remove(index)} // remove a friend from the list
+                                  >
+                                    Quitar
+                                  </button>
+                                </div>
+                              ))
+                          )
                         )
-                      )
-                    }
-                    <div className="p-t-54 p-l-54 m-l-54">
-                      <button 
-                        type="submit"
-                        className="dp-button button-medium primary-green">
-                        Guardar
-                    </button>
+                      }
+                      <div className="p-t-54 p-l-54 m-l-54">
+                        <button 
+                          type="submit"
+                          className="dp-button button-medium primary-green">
+                          Guardar
+                      </button>
                     </div>
                   </div>
-                )}
+                )}}
               />
             </Form>
           )}

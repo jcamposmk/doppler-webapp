@@ -152,7 +152,7 @@ export const FieldGroup = ({ className, children }) => (
   <ul className={concatClasses('field-group', className)}>{children}</ul>
 );
 
-const SetFormMessage = connect(({ formik: { setErrors }, message }) => {
+export const SetFormMessage = connect(({ formik: { setErrors }, message }) => {
   useEffect(() => {
     if (message) {
       setErrors(message);
@@ -187,6 +187,7 @@ export const FormMessages = connect(
 );
 
 const Message = ({ message }) => {
+  console.log('message :>> ', message);
   const intl = useIntl();
   return React.isValidElement(message) ? (
     message
@@ -197,18 +198,21 @@ const Message = ({ message }) => {
   );
 };
 export const FieldItem = connect(
-  ({ className, fieldName, children, formik: { errors, touched, submitCount } }) => (
+  ({ className, customFieldName, fieldName, children, formik: { errors, touched, submitCount } }) => (
     <li
       className={concatClasses(
         className,
         submitCount && touched[fieldName] && errors[fieldName] ? 'error' : '',
       )}
     >
+      {console.log('fieldName :>> ', fieldName)}
+      {console.log('customFieldName :>> ', customFieldName)}
+      {console.log('formik :>> ', { errors, touched, submitCount })}
       {children}
       {/* Boolean errors will not have message */}
-      {submitCount && touched[fieldName] && errors[fieldName] && errors[fieldName] !== true ? (
+      {submitCount && touched[customFieldName ?? fieldName] && errors[customFieldName ?? fieldName] && errors[customFieldName ?? fieldName] !== true ? (
         <div className="dp-message dp-error-form">
-          <Message message={errors[fieldName]} />
+          <Message message={errors[customFieldName ?? fieldName]} />
         </div>
       ) : null}
     </li>
@@ -408,13 +412,14 @@ export const InputFieldItem = ({
 export const EmailFieldItem = ({
   className,
   fieldName,
+  customFieldName,
   label,
   type,
   placeholder,
   required,
   ...rest
 }) => (
-  <FieldItem className={concatClasses('field-item', className)} fieldName={fieldName}>
+  <FieldItem className={concatClasses('field-item', className)} fieldName={fieldName} customFieldName={customFieldName}>
     <label htmlFor={fieldName}>{label}</label>
     <Field
       type="text"
