@@ -106,22 +106,6 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
   const [ initialValues, setInitialValues] = useState([]);
   const [ isLoading, setIsLoading] = useState(false);
 
-  /** Prepare empty values for all fields
-   * It is required because in another way, the fields are not marked as touched.
-   */
-  const getFormInitialValues = () => {
-    const values = Object.keys(fieldNames).reduce(
-      (accumulator, currentValue) => ({ ...accumulator, [currentValue]: '' }),
-      {},
-    );
-    if (location.state && location.state.email) {
-      values[fieldNames.user] = location.state.email;
-    }
-
-    return values;
-  };
-
-  const formMessage = useMemo(() => getForgotErrorMessage(location), [location]);
 
   useEffect(() => {
     if (isActivactionInProgress(location) && typeof window.gtag === 'function') {
@@ -177,6 +161,13 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
     );
   }
 
+  const handleKeyDown = (event, arrayHelpers) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      arrayHelpers.push('')
+    }
+  }
+
   return (
     <div className="dp-app-container">
       <main 
@@ -187,7 +178,7 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
         </Helmet>
         
         <Formik
-        enableReinitialize={true}
+          enableReinitialize={true}
           initialValues={{ friends: initialValues }}
           onSubmit={values =>
             setTimeout(() => {
@@ -205,7 +196,8 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
                     <div className="dp-rowflex p-b-32">
                       <div class="col-md-8">
                         <Field 
-                          name={`friends.${Math.max(0, values.friends.length-1)}`} />
+                          name={`friends.${Math.max(0, values.friends.length-1)}`}
+                          onKeyDown={e => handleKeyDown(e, arrayHelpers)} />
                       </div>
                         <button 
                             type="button" 
