@@ -21,6 +21,7 @@ import {
   SubmitButton,
   FormMessages,
 } from '../form-helpers/form-helpers';
+import { BigQueryAuthorizationForm } from './BigQueryAuthorizationForm';
 
 const fieldNames = {
   user: 'user',
@@ -112,7 +113,6 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
   const [ initialValues, setInitialValues] = useState([]);
   const [ isLoading, setIsLoading] = useState(false);
 
-
   useEffect(() => {
     if (isActivactionInProgress(location) && typeof window.gtag === 'function') {
       window.gtag('event', 'conversion', { send_to: 'AW-1065197040/ZA62CKv_gZEBEPC79vsD' });
@@ -167,14 +167,8 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
     );
   }
 
-  const handleKeyDown = (event, callback) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      callback();
-    }
-  }
-
-  const validateEmail = (value) => {
+  // field-level validation
+  const validateArrayItem = (value) => {
     let error;
     if (!value) {
       error = 'Required';
@@ -184,21 +178,20 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
     return error;
   }
 
-  const addEmail = async (validateField, fieldName, callback) => {
-    const errors = await validateField(fieldName);
-    if(!errors && callback) {
-      callback();
+  // form-level validation
+  const validateForm = (values) => {
+    const errors = {};
+    const emailsAdded = values["emails"].filter(f => f);
+    if (!emailsAdded || emailsAdded.length === 0) {
+      errors["emails"] = 'Required';
     }
+    return errors;
   }
 
-  const validateForm = ({emails}) => {
-    const errors = {};
-    const emailsAdded = emails.filter(f => f);
-    if (!emailsAdded || emailsAdded.length === 0) {
-      errors.emails = 'Required';
-    }
-  
-    return errors;
+  const onSubmit = (values) => {
+    setTimeout(() => {
+        alert(JSON.stringify(values["emails"].filter(f => f), null, 2));
+    }, 500)
   }
 
   return (
@@ -209,77 +202,13 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
           <title>{_('login.head_title')}</title>
           <meta name="description" content={_('login.head_description')} />
         </Helmet>
-        <Formik
-          validate={validateForm}
-          enableReinitialize={true}
-          validateOnChange={false}
-          validateOnBlur={false}
-          initialValues={{ emails: initialValues }}
-          onSubmit={values =>
-            setTimeout(() => {
-              alert(JSON.stringify(values.emails.filter(f => f), null, 2));
-
-            }, 500)
-          }
-          render={({ values, errors, touched, validateField }) => (
-            <Form>
-              <FieldArray
-                name="emails"
-                render={arrayHelpers => {
-                  const fieldName = `emails.${Math.max(0, values.emails.length-1)}`;
-                  const _addEmail = () => addEmail(validateField, fieldName, () => arrayHelpers.push(''));
-                  const isEmailEmpty = !values.emails[Math.max(0, values.emails.length-1)];
-
-                  return (
-                    <div>
-                      <div className="dp-rowflex p-b-32">
-                        <div class="col-md-7">
-                          <Field 
-                            name={fieldName}
-                            onKeyDown={!isEmailEmpty ? e => handleKeyDown(e, _addEmail) : null}
-                            validate={!isEmailEmpty ? validateEmail : null} />
-                        </div>
-                          <button 
-                              disabled={isEmailEmpty}
-                              type="button" 
-                              onClick={_addEmail}
-                              className="dp-button button-medium secondary-green">
-                              Agregar
-                            </button>
-                      </div>
-                      { errors.emails && <div className="dp-error">{errors.emails}</div> } 
-                      {
-                        isLoading ? (
-                          <span>Cargando ...</span>
-                        ) : (
-                            values.emails?.length > 1 && (
-                              values.emails.slice(0, values.emails.length-1).map((friend, index) => (
-                                <div key={index} className="p-b-6 p-t-6">
-                                  <span className="p-r-36">{friend}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => arrayHelpers.remove(index)} // remove a friend from the list
-                                  >
-                                    Quitar
-                                  </button>
-                                </div>
-                              ))
-                          )
-                        )
-                      }
-                      <div className="p-t-54 p-l-54 m-l-54">
-                        <button 
-                          type="submit"
-                          className="dp-button button-medium primary-green">
-                          Guardar
-                      </button>
-                    </div>
-                  </div>
-                )}}
-              />
-            </Form>
-          )}
-        />
+        <BigQueryAuthorizationForm 
+          initialValues={initialValues}
+          isFetching={isLoading}
+          validateArrayItem={validateArrayItem}
+          validateForm={validateForm}
+          onSubmit={onSubmit}
+          />
       </main>
     </div>
   );
