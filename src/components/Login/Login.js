@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, Redirect } from 'react-router-dom';
 import { useIntl, FormattedMessage } from 'react-intl';
 import { Helmet } from 'react-helmet';
@@ -126,7 +126,7 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
       const data = fetchInfo();
       setInitialValues([...data, ""]);
       setIsLoading(false);
-    }, 2000);
+    }, 1500);
   }, []);
 
   const errorMessages = {
@@ -188,10 +188,13 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
     return errors;
   }
 
-  const onSubmit = (values) => {
-    setTimeout(() => {
+  const onSubmit = async (values) => {
+    await new Promise((resolve, reject) => {
+      setTimeout(() => {
+        resolve(true);
         alert(JSON.stringify(values["emails"].filter(f => f), null, 2));
-    }, 500)
+      }, 500)
+    });
   }
 
   return (
@@ -203,12 +206,26 @@ const Login = ({ location, dependencies: { dopplerLegacyClient, sessionManager, 
           <meta name="description" content={_('login.head_description')} />
         </Helmet>
         <BigQueryAuthorizationForm 
+          formId="big-query"
           initialValues={initialValues}
-          isFetching={isLoading}
+          fetching={isLoading}
           validateArrayItem={validateArrayItem}
           validateForm={validateForm}
           onSubmit={onSubmit}
           />
+        <div className="p-t-54 p-l-54 m-l-54">
+          <button
+            form="big-query"
+            type="submit"
+            disabled={isLoading}
+            className={
+              'dp-button button-medium primary-green' +
+              ((isLoading && ' button--loading') || '')
+            }
+          >
+            Guardar
+          </button>
+        </div>
       </main>
     </div>
   );

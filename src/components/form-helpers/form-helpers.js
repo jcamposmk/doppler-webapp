@@ -212,12 +212,36 @@ export const FieldItem = connect(
       {/* Boolean errors will not have message */}
       {submitCount && touched[customFieldName ?? fieldName] && errors[customFieldName ?? fieldName] && errors[customFieldName ?? fieldName] !== true ? (
         <div className="dp-message dp-error-form">
+          
           <Message message={errors[customFieldName ?? fieldName]} />
         </div>
       ) : null}
     </li>
   ),
 );
+
+
+export const FieldItemArray = connect(
+  ({ className, customFieldName, fieldName, children, formik: { errors, touched, submitCount } }) => (
+    <li
+      className={concatClasses(
+        className,
+        submitCount && touched[fieldName] && errors[fieldName] ? 'error' : '',
+      )}
+    >
+      {children}
+      {/* Boolean errors will not have message */}
+      { touched[customFieldName ?? fieldName] && errors[customFieldName ?? fieldName] && errors[customFieldName ?? fieldName] !== true ? (
+        <div className="dp-message dp-error-form">
+          <Message message={errors[customFieldName ?? fieldName]} />
+        </div>
+      ) : null}
+    </li>
+  ),
+);
+
+
+
 
 const PasswordWrapper = connect(
   ({ className, fieldName, children, formik: { errors, touched } }) => {
@@ -542,10 +566,11 @@ export const NumberField = ({ required, ...rest }) => (
  * @param { import('formik').FormikProps<Values> } props.formik
  * @param { string } props.className
  */
-const _SubmitButton = ({ children, formik: { isSubmitting }, className }) => {
+const _SubmitButton = ({ children, formik: { isSubmitting }, className, formName }) => {
   return (
     <>
       <button
+        formName={formName}
         type="submit"
         disabled={isSubmitting}
         className={
